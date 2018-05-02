@@ -57,6 +57,7 @@
 void Init_Clock(void);
 void Init_GPIO(void);
 void ADC_init(void);
+void ADC_init_reg(void);
 void Init_Light_Sensor(void);
 void Init_State(void);
 
@@ -64,18 +65,20 @@ void blinkingIndicator(void);
 void runningIndicator(void);
 void toggleLED(void);
 
-
-
 // Defines
 /* Define the wattage, it will define wich LED to turn on or off. The wattage could be 5 (RED), 10 (GREEN) or 15 (BLUE). */
 #define wattage 15
+#define AUDIO_ARRAY_SIZE 10
+#define AUDIO_THRESHOLD 0x9C4
+#define LUX_THRESHOLD 0
 
 // Global variables
 extern volatile bool g_bState=false;
 extern volatile int g_iTimeCounter=0;
 extern volatile float g_fLux=100;
 extern volatile bool g_bButtonPressed=false;
-extern signed short audio_past=0;
+extern volatile signed short g_aAudioRecord[AUDIO_ARRAY_SIZE]={};
+extern volatile int g_iAudioRecordPosition=0;
 
 //Timer A configuration.
 Timer_A_initUpModeParam initUpParam_A0 =
@@ -118,11 +121,11 @@ Timer_A_initCompareModeParam initCompParam =
      */
 ADC12_B_initParam initParam =
 {
-     ADC12_B_SAMPLEHOLDSOURCE_4,
-     ADC12_B_CLOCKSOURCE_ADC12OSC,
+     ADC12_B_SAMPLEHOLDSOURCE_SC,
+     ADC12_B_CLOCKSOURCE_MCLK,
      ADC12_B_CLOCKDIVIDER_1,
      ADC12_B_CLOCKPREDIVIDER__1,
-     ADC12_B_TEMPSENSEMAP
+     ADC12_B_NOINTCH
 };
 
 // Configure Memory Buffer
@@ -138,7 +141,7 @@ ADC12_B_configureMemoryParam configureMemoryParam =
 {
      ADC12_B_MEMORY_0,
      ADC12_B_INPUT_A11,
-     ADC12_B_VREFPOS_INTBUF_VREFNEG_VSS,
+     ADC12_B_VREFPOS_AVCC_VREFNEG_VSS,
      ADC12_B_ENDOFSEQUENCE,
      ADC12_B_WINDOW_COMPARATOR_DISABLE,
      ADC12_B_DIFFERENTIAL_MODE_DISABLE
@@ -161,7 +164,9 @@ int main(void) {
     Init_State();
 
     //Configure microphone ADC
-    ADC_init();
+    //ADC_init();
+
+    ADC_init_reg();
 
     // Configure clocks
     Init_Clock();
@@ -174,6 +179,7 @@ int main(void) {
     while(1)
     {
         runningIndicator();
+        ADC12CTL0 |= ADC12ENC | ADC12SC;         // Sampling and conversion start
     }
 }
 
@@ -186,13 +192,6 @@ int main(void) {
 void Init_Clock(void)
 {
     /*
-    // Set PJ.4 and PJ.5 as Secondary Module Function Input, LFXT.
-    GPIO_setAsPeripheralModuleFunctionInputPin(
-           GPIO_PORT_PJ,
-           GPIO_PIN4 + GPIO_PIN5,
-           GPIO_PRIMARY_MODULE_FUNCTION
-           );
-
     CS_setExternalClockSource(32768, 0);
     // Intializes the XT1 crystal oscillator
     CS_turnOnLFXT(CS_LFXT_DRIVE_3);
@@ -202,6 +201,7 @@ void Init_Clock(void)
     CS_initClockSignal(CS_MCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
     CS_initClockSignal(CS_SMCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
     CS_initClockSignal(CS_ACLK, CS_LFXTCLK_SELECT, CS_CLOCK_DIVIDER_1);*/
+
     // Set DCO frequency to default 8MHz
     CS_setDCOFreq(CS_DCORSEL_0, CS_DCOFSEL_6);
 
@@ -253,7 +253,7 @@ void Init_GPIO(void) {
 /* Method to initialize the the light sensor and I2C  */
 void Init_Light_Sensor(void) {
     /* Initialize I2C communication */
-    I2C_initGPIO();
+    I2C_initGPIO;
     I2C_init();
 
     /* Initialize OPT3001 digital ambient light sensor */
@@ -266,7 +266,7 @@ void Init_State(void) {
     g_fLux = OPT3001_getLux();
 
     /* If less than 5 lux then turn on*/
-    if(g_fLux<5) {
+    if(g_fLux<LUX_THRESHOLD) {
         toggleLED();
     }
 }
@@ -284,7 +284,7 @@ void ADC_init(void) {
            GPIO_PRIMARY_MODULE_FUNCTION
            );
 
-    // Select internal ref = 1.2V
+    /* Select internal ref = 1.2V
     Ref_A_setReferenceVoltage(REF_A_BASE,
                               REF_A_VREF1_2V);
     // Internal Reference ON
@@ -293,7 +293,7 @@ void ADC_init(void) {
     // Enables the internal temperature sensor
     Ref_A_enableTempSensor(REF_A_BASE);
 
-    while(!Ref_A_isVariableReferenceVoltageOutputReady(REF_A_BASE));
+    while(!Ref_A_isVariableReferenceVoltageOutputReady(REF_A_BASE));*/
 
     // Initialize the ADC12B Module
     /*
@@ -350,7 +350,33 @@ void ADC_init(void) {
         );
 }
 
+void ADC_init_reg(void) {
+    // Set P4.1 and P4.2 as Secondary Module Function Input, LFXT.
+    GPIO_setAsPeripheralModuleFunctionInputPin(
+           GPIO_PORT_PJ,
+           GPIO_PIN4 + GPIO_PIN5,
+           GPIO_PRIMARY_MODULE_FUNCTION
+           );
 
+    P9SEL1 |= BIT3;                           // Configure P9.3 for ADC
+    P9SEL0 |= BIT3;
+
+    // By default, REFMSTR=1 => REFCTL is used to configure the internal reference
+  while(REFCTL0 & REFGENBUSY);              // If ref generator busy, WAIT
+  REFCTL0 |= REFVSEL_0 | REFON;             // Select internal ref = 1.2V
+                                            // Internal Reference ON
+
+  // Configure ADC12
+  ADC12CTL0 = ADC12SHT0_2 | ADC12ON;
+  ADC12CTL1 = ADC12SHP;                     // ADCCLK = MODOSC; sampling timer
+  ADC12CTL2 |= ADC12RES_2;                  // 12-bit conversion results
+  ADC12IER0 |= ADC12IE0;                    // Enable ADC conv complete interrupt
+  ADC12MCTL0 |= ADC12INCH_11 | ADC12VRSEL_0; // A1 ADC input select; Vref=1.2V
+
+  while(!(REFCTL0 & REFGENRDY));            // Wait for reference generator
+                                            // to settle
+  ADC12CTL0 |= ADC12ENC | ADC12SC;         // Sampling and conversion start
+}
 /****************************************
  *  FUNCTIONS
  ****************************************/
@@ -395,6 +421,7 @@ void toggleLED(void) {
     }
     g_bState=!g_bState;
 }
+
 
 /****************************************
  *  INTERRUPT SERVICE ROUTINES
@@ -458,75 +485,45 @@ __interrupt void TIMER0_A0_ISR (void)
 __interrupt void ADC12_ISR(void)
 {
     if (__even_in_range(ADC12IV,12)==12) {
+        //GPIO_toggleOutputOnPin(GPIO_PORT_P9,GPIO_PIN7);
+        // Clear the interrupt flag
         ADC12_B_clearInterrupt(ADC12_B_BASE, 0, ADC12_B_IFG0);
+        //GPIO_toggleOutputOnPin(GPIO_PORT_P9,GPIO_PIN7);
+
         //Get the result
-        signed short audio =  0;
-        audio=ADC12MEM0;
-        GPIO_toggleOutputOnPin(GPIO_PORT_P9,GPIO_PIN7);
-        if (audio>audio_past) {
-            //GPIO_toggleOutputOnPin(GPIO_PORT_P9,GPIO_PIN7);
-            audio_past=audio;
+        volatile signed short l_iAudio=ADC12MEM0;
+
+
+        //Calculate the average
+        volatile int l_iAudioAverage=0;
+        volatile uint32_t i;
+        for(i=AUDIO_ARRAY_SIZE; i>0; i--) {
+            l_iAudioAverage+=g_aAudioRecord[i];
+            l_iAudioAverage=l_iAudioAverage/2;
         }
-        // Start another ADC conversion
-        //ADC12_B_startConversion(ADC12_B_BASE, ADC12_B_START_AT_ADC12MEM0, ADC12_B_REPEATED_SINGLECHANNEL);
-        //__bic_SR_register_on_exit(LPM3_bits);   // Exit active CPU
-    }
-    /*
-    switch(__even_in_range(ADC12IV,12))
-    {
-    case  0: break;                         // Vector  0:  No interrupt
-    case  2: break;                         // Vector  2:  ADC12BMEMx Overflow
-    case  4: break;                         // Vector  4:  Conversion time overflow
-    case  6: break;                         // Vector  6:  ADC12BHI
-    case  8: break;                         // Vector  8:  ADC12BLO
-    case 10: break;                         // Vector 10:  ADC12BIN
-    case 12:                                // Vector 12:  ADC12BMEM0 Interrupt
-        ADC12_B_clearInterrupt(ADC12_B_BASE, 0, ADC12_B_IFG0);
-        //Get the result
-        signed short audio =  0;
-        audio=ADC12MEM0;
-        GPIO_toggleOutputOnPin(GPIO_PORT_P9,GPIO_PIN7);
-        if (audio>0) {
+        //l_iAudioAverage=l_iAudioAverage/AUDIO_ARRAY_SIZE;
+
+        //Store the result
+        g_aAudioRecord[g_iAudioRecordPosition]=l_iAudio;
+        g_iAudioRecordPosition++;
+        if (g_iAudioRecordPosition==AUDIO_ARRAY_SIZE) g_iAudioRecordPosition=0;
+
+        //Get lux
+        g_fLux = OPT3001_getLux();
+        //Compare the result with the average (turn on condition)
+        //if (l_iAudio>l_iAudioAverage) {
+        //if ((l_iAudio>l_iAudioAverage && l_iAudio >= AUDIO_THRESHOLD)) {
+        if ((l_iAudio>l_iAudioAverage && l_iAudio >= AUDIO_THRESHOLD) || (g_fLux<LUX_THRESHOLD)) {
+        //if (l_iAudio >= AUDIO_THRESHOLD) {
             GPIO_toggleOutputOnPin(GPIO_PORT_P9,GPIO_PIN7);
+            if(g_bState){
+                //Reset the timer A counter
+                g_iTimeCounter=0;
+            } else toggleLED();
+
         }
         // Start another ADC conversion
-        ADC12_B_startConversion(ADC12_B_BASE, ADC12_B_START_AT_ADC12MEM0, ADC12_B_REPEATED_SINGLECHANNEL);
-        //__bic_SR_register_on_exit(LPM3_bits);   // Exit active CPU
-        break;                              // Clear CPUOFF bit from 0(SR)
-    case 14: break;                         // Vector 14:  ADC12BMEM1
-    case 16: break;                         // Vector 16:  ADC12BMEM2
-    case 18: break;                         // Vector 18:  ADC12BMEM3
-    case 20: break;                         // Vector 20:  ADC12BMEM4
-    case 22: break;                         // Vector 22:  ADC12BMEM5
-    case 24: break;                         // Vector 24:  ADC12BMEM6
-    case 26: break;                         // Vector 26:  ADC12BMEM7
-    case 28: break;                         // Vector 28:  ADC12BMEM8
-    case 30: break;                         // Vector 30:  ADC12BMEM9
-    case 32: break;                         // Vector 32:  ADC12BMEM10
-    case 34: break;                         // Vector 34:  ADC12BMEM11
-    case 36: break;                         // Vector 36:  ADC12BMEM12
-    case 38: break;                         // Vector 38:  ADC12BMEM13
-    case 40: break;                         // Vector 40:  ADC12BMEM14
-    case 42: break;                         // Vector 42:  ADC12BMEM15
-    case 44: break;                         // Vector 44:  ADC12BMEM16
-    case 46: break;                         // Vector 46:  ADC12BMEM17
-    case 48: break;                         // Vector 48:  ADC12BMEM18
-    case 50: break;                         // Vector 50:  ADC12BMEM19
-    case 52: break;                         // Vector 52:  ADC12BMEM20
-    case 54: break;                         // Vector 54:  ADC12BMEM21
-    case 56: break;                         // Vector 56:  ADC12BMEM22
-    case 58: break;                         // Vector 58:  ADC12BMEM23
-    case 60: break;                         // Vector 60:  ADC12BMEM24
-    case 62: break;                         // Vector 62:  ADC12BMEM25
-    case 64: break;                         // Vector 64:  ADC12BMEM26
-    case 66: break;                         // Vector 66:  ADC12BMEM27
-    case 68: break;                         // Vector 68:  ADC12BMEM28
-    case 70: break;                         // Vector 70:  ADC12BMEM29
-    case 72: break;                         // Vector 72:  ADC12BMEM30
-    case 74: break;                         // Vector 74:  ADC12BMEM31
-    case 76: break;                         // Vector 76:  ADC12BRDY
-    default: break;
-    }*/
+    }
 }
 
 }

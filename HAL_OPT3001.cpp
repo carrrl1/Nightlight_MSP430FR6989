@@ -45,55 +45,54 @@ void OPT3001_init()
     I2C_setslave(OPT3001_SLAVE_ADDRESS);
 
     /* Set Default configuration for OPT3001*/
-    I2C_write16(CONFIG_REG, DEFAULT_CONFIG_100,1000);
+    I2C_write16(CONFIG_REG, DEFAULT_CONFIG_100, 1000);
 }
 
 /*
 unsigned int OPT3001_readManufacturerId()
 {
-    /// Specify slave address for OPT3001
+    // Specify slave address for OPT3001
     I2C_setslave(OPT3001_SLAVE_ADDRESS);
 
     return I2C_read16(MANUFACTUREID_REG);
 }
 unsigned int OPT3001_readDeviceId()
 {
-    /// Specify slave address for OPT3001
+    // Specify slave address for OPT3001
     I2C_setslave(OPT3001_SLAVE_ADDRESS);
 
     return I2C_read16(DEVICEID_REG);
 }
 unsigned int OPT3001_readConfigReg()
 {
-    /// Specify slave address for OPT3001
+    // Specify slave address for OPT3001
     I2C_setslave(OPT3001_SLAVE_ADDRESS);
 
     return I2C_read16(CONFIG_REG);
 }
 unsigned int OPT3001_readLowLimitReg()
 {
-    /// Specify slave address for OPT3001
+    // Specify slave address for OPT3001
     I2C_setslave(OPT3001_SLAVE_ADDRESS);
 
     return I2C_read16(LOWLIMIT_REG);
 }
 unsigned int OPT3001_readHighLimitReg()
 {
-    /// Specify slave address for OPT3001
+    //Specify slave address for OPT3001
     I2C_setslave(OPT3001_SLAVE_ADDRESS);
 
     return I2C_read16(HIGHLIMIT_REG);
 } */
-
-unsigned short int OPT3001_getLux()
+unsigned long int OPT3001_getLux()
 {
     /* Specify slave address for OPT3001 */
     I2C_setslave(OPT3001_SLAVE_ADDRESS);
 
     uint16_t exponent = 0;
     uint32_t result = 0;
-    //int16_t raw=0;
-    int16_t raw;
+    //int16_t raw;
+    short raw;
     I2C_read16(RESULT_REG,&raw,1000);
     /*Convert to LUX*/
     //extract result & exponent data from raw readings

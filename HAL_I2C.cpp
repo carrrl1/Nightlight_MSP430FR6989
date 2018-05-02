@@ -43,7 +43,7 @@
 EUSCI_B_I2C_initMasterParam i2cParam =
 {
         EUSCI_B_I2C_CLOCKSOURCE_SMCLK,          // SMCLK Clock Source
-		8000000,                                // SMCLK = 8MHz
+        8000000,                                // SMCLK = 8MHz
         EUSCI_B_I2C_SET_DATA_RATE_400KBPS,      // Desired I2C Clock of 400khz
         0,                                      // No byte counter threshold
         EUSCI_B_I2C_NO_AUTO_STOP                // No Autostop
@@ -54,14 +54,14 @@ void I2C_initGPIO()
 {
     /* Select I2C function for I2C_SCL & I2C_SDA */
     GPIO_setAsPeripheralModuleFunctionOutputPin(
-    		I2C_SCL_PORT,
-			I2C_SCL_PIN,
-			I2C_SELECT_FUNCTION);
+            I2C_SCL_PORT,
+            I2C_SCL_PIN,
+            I2C_SELECT_FUNCTION);
 
     GPIO_setAsPeripheralModuleFunctionOutputPin(
-    		I2C_SDA_PORT,
-			I2C_SDA_PIN,
-			I2C_SELECT_FUNCTION);
+            I2C_SDA_PORT,
+            I2C_SDA_PIN,
+            I2C_SELECT_FUNCTION);
 }
 
 
@@ -96,21 +96,21 @@ void I2C_init(void)
 bool I2C_write8 (unsigned char pointer, unsigned char writeByte, unsigned int timeout)
 {
     /* Set master to transmit mode PL */
-	EUSCI_B_I2C_setMode(I2C_BASE,
+    EUSCI_B_I2C_setMode(I2C_BASE,
         EUSCI_B_I2C_TRANSMIT_MODE);
 
     /* Clear any existing interrupt flag PL */
-	EUSCI_B_I2C_clearInterrupt(I2C_BASE,
+    EUSCI_B_I2C_clearInterrupt(I2C_BASE,
         EUSCI_B_I2C_TRANSMIT_INTERRUPT0);
 
     /* Initiate start and send first character */
     if (!EUSCI_B_I2C_masterSendMultiByteStartWithTimeout(I2C_BASE,
         pointer, timeout))
-    	return 0;
+        return 0;
 
     if (!EUSCI_B_I2C_masterSendMultiByteFinishWithTimeout(I2C_BASE,
         writeByte, timeout))
-    	return 0;
+        return 0;
 
     return 1;
 }
@@ -126,26 +126,26 @@ bool I2C_write8 (unsigned char pointer, unsigned char writeByte, unsigned int ti
 bool I2C_write16 (unsigned char pointer, unsigned short writeWord, unsigned int timeout)
 {
     /* Set master to transmit mode PL */
-	EUSCI_B_I2C_setMode(I2C_BASE,
+    EUSCI_B_I2C_setMode(I2C_BASE,
         EUSCI_B_I2C_TRANSMIT_MODE);
 
     /* Clear any existing interrupt flag PL */
-	EUSCI_B_I2C_clearInterrupt(I2C_BASE,
+    EUSCI_B_I2C_clearInterrupt(I2C_BASE,
         EUSCI_B_I2C_TRANSMIT_INTERRUPT0);
 
     /* Initiate start and send first character */
     if (!EUSCI_B_I2C_masterSendMultiByteStartWithTimeout(I2C_BASE,
         pointer, timeout))
-    	return 0;
+        return 0;
 
     /* Send the MSB of writeByte to SENSOR */
     if (!EUSCI_B_I2C_masterSendMultiByteNextWithTimeout(I2C_BASE,
         (unsigned char)(writeWord&0xFF), timeout))
-    	return 0;
+        return 0;
 
     if (!EUSCI_B_I2C_masterSendMultiByteFinishWithTimeout(I2C_BASE,
         (unsigned char)(writeWord>>8), timeout))
-    	return 0;
+        return 0;
 
     return 1;
 }
@@ -159,21 +159,21 @@ bool I2C_write16 (unsigned char pointer, unsigned short writeWord, unsigned int 
 
 bool I2C_read8(unsigned char pointer, char * result, unsigned int timeout)
 {
-	volatile int val = 0;
-	volatile int valScratch = 0;
+    volatile int val = 0;
+    volatile int valScratch = 0;
 
     /* Set master to transmit mode PL */
-	EUSCI_B_I2C_setMode(I2C_BASE,
+    EUSCI_B_I2C_setMode(I2C_BASE,
         EUSCI_B_I2C_TRANSMIT_MODE);
 
     /* Clear any existing interrupt flag PL */
-	EUSCI_B_I2C_clearInterrupt(I2C_BASE,
+    EUSCI_B_I2C_clearInterrupt(I2C_BASE,
         EUSCI_B_I2C_TRANSMIT_INTERRUPT0);
 
     /* Initiate start and send first character */
     if (!EUSCI_B_I2C_masterSendSingleByteWithTimeout(I2C_BASE,
         pointer, timeout))
-    	return 0;
+        return 0;
 
     /*
      * Generate Start condition and set it to receive mode.
@@ -184,7 +184,7 @@ bool I2C_read8(unsigned char pointer, char * result, unsigned int timeout)
 //
 //    /* Read from I2C RX register */
 //    if(!I2C_masterReceiveMultiByteFinishWithTimeout(I2C_BASE, &val, timeout))
-//    	return 0;
+//      return 0;
 //
 //    /* Return temperature value */
 //    *result = val;
@@ -201,10 +201,11 @@ bool I2C_read8(unsigned char pointer, char * result, unsigned int timeout)
  * @return Register contents
  ******************************************************************************/
 
-bool I2C_read16(unsigned char pointer, int16_t * result, unsigned int timeout)
+bool I2C_read16(unsigned char pointer, short * result, unsigned int timeout)
 {
-    int16_t  val = 0;
-    uint8_t  valScratch = 0;
+    uint8_t val = 0;
+    uint8_t valScratch = 0;
+    short r = 0;
 
     /* Set master to transmit mode PL */
     EUSCI_B_I2C_setMode(I2C_BASE,
@@ -230,20 +231,20 @@ bool I2C_read16(unsigned char pointer, int16_t * result, unsigned int timeout)
         EUSCI_B_I2C_RECEIVE_INTERRUPT0)));
 
     /* Read from I2C RX register */
-    val = EUSCI_B_I2C_masterReceiveMultiByteNext(I2C_BASE);
+    valScratch = EUSCI_B_I2C_masterReceiveMultiByteNext(I2C_BASE);
 
     /* Receive second byte then send STOP condition */
-    if (!EUSCI_B_I2C_masterReceiveMultiByteFinishWithTimeout(I2C_BASE, &valScratch, timeout))
-    	return 0;
+    if (!EUSCI_B_I2C_masterReceiveMultiByteFinishWithTimeout(I2C_BASE, &val, timeout))
+        return 0;
 
     /* Shift val to top MSB */
-    val = (val << 8);
+    r = (val << 8);
 
     /* Read from I2C RX Register and write to LSB of r */
-    val |= valScratch;
+    r |= valScratch;
 
     /* Return temperature value */
-    *result = (int16_t)val;
+    *result = r;
 
     return 1;
 }
@@ -252,11 +253,11 @@ bool I2C_read16(unsigned char pointer, int16_t * result, unsigned int timeout)
 void I2C_setslave(unsigned short slaveAdr)
 {
     /* Specify slave address for I2C */
-	EUSCI_B_I2C_setSlaveAddress(I2C_BASE,
+    EUSCI_B_I2C_setSlaveAddress(I2C_BASE,
         slaveAdr);
 
     /* Enable and clear the interrupt flag */
-	EUSCI_B_I2C_clearInterrupt(I2C_BASE,
+    EUSCI_B_I2C_clearInterrupt(I2C_BASE,
         EUSCI_B_I2C_TRANSMIT_INTERRUPT0 + EUSCI_B_I2C_RECEIVE_INTERRUPT0);
     return;
 }

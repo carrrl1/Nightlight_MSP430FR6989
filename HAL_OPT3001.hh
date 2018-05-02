@@ -79,7 +79,7 @@ FC1 to FC0 - Fault count bits. Read/write bits. Default �00� - the first fau
 */
 
 void OPT3001_init(void);
-unsigned short int OPT3001_getLux(void);
+unsigned long int OPT3001_getLux(void);
 unsigned int OPT3001_readManufacturerId(void);
 unsigned int OPT3001_readDeviceId(void);
 unsigned int OPT3001_readConfigReg(void);
