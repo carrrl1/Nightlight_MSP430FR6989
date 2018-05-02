@@ -68,7 +68,7 @@ void toggleLED(void);
 // Defines
 /* Define the wattage, it will define wich LED to turn on or off. The wattage could be 5 (RED), 10 (GREEN) or 15 (BLUE). */
 #define wattage 15
-#define AUDIO_ARRAY_SIZE 10
+#define AUDIO_ARRAY_SIZE 30
 #define AUDIO_THRESHOLD 0x9C4
 #define LUX_THRESHOLD 0
 
