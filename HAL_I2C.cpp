@@ -201,11 +201,10 @@ bool I2C_read8(unsigned char pointer, char * result, unsigned int timeout)
  * @return Register contents
  ******************************************************************************/
 
-bool I2C_read16(unsigned char pointer, short * result, unsigned int timeout)
+bool I2C_read16(unsigned char pointer, int16_t * result, unsigned int timeout)
 {
-    uint8_t val = 0;
-    uint8_t valScratch = 0;
-    short r = 0;
+    int16_t  val = 0;
+    uint8_t  valScratch = 0;
 
     /* Set master to transmit mode PL */
     EUSCI_B_I2C_setMode(I2C_BASE,
@@ -217,7 +216,7 @@ bool I2C_read16(unsigned char pointer, short * result, unsigned int timeout)
 
     /* Initiate start and send first character */
     if (!EUSCI_B_I2C_masterSendSingleByteWithTimeout(I2C_BASE, pointer, timeout))
-    	return 0;
+        return 0;
 
     /*
      * Generate Start condition and set it to receive mode.
@@ -231,20 +230,20 @@ bool I2C_read16(unsigned char pointer, short * result, unsigned int timeout)
         EUSCI_B_I2C_RECEIVE_INTERRUPT0)));
 
     /* Read from I2C RX register */
-    valScratch = EUSCI_B_I2C_masterReceiveMultiByteNext(I2C_BASE);
+    val = EUSCI_B_I2C_masterReceiveMultiByteNext(I2C_BASE);
 
     /* Receive second byte then send STOP condition */
-    if (!EUSCI_B_I2C_masterReceiveMultiByteFinishWithTimeout(I2C_BASE, &val, timeout))
+    if (!EUSCI_B_I2C_masterReceiveMultiByteFinishWithTimeout(I2C_BASE, &valScratch, timeout))
     	return 0;
 
     /* Shift val to top MSB */
-    r = (val << 8);
+    val = (val << 8);
 
     /* Read from I2C RX Register and write to LSB of r */
-    r |= valScratch;
+    val |= valScratch;
 
     /* Return temperature value */
-    *result = r;
+    *result = (int16_t)val;
 
     return 1;
 }

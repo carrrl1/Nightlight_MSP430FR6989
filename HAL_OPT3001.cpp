@@ -93,7 +93,7 @@ unsigned short int OPT3001_getLux()
     uint16_t exponent = 0;
     uint32_t result = 0;
     //int16_t raw=0;
-    short raw;
+    int16_t raw;
     I2C_read16(RESULT_REG,&raw,1000);
     /*Convert to LUX*/
     //extract result & exponent data from raw readings

@@ -56,7 +56,7 @@ void I2C_init(void);
 bool I2C_write8(unsigned char pointer, unsigned char writeByte, unsigned int timeout);
 bool I2C_write16(unsigned char pointer, unsigned short writeWord, unsigned int timeout);
 bool I2C_read8(unsigned char pointer, char *result, unsigned int timeout);
-bool I2C_read16(unsigned char pointer, short *result, unsigned int timeout);
+bool I2C_read16(unsigned char pointer, int16_t *result, unsigned int timeout);
 void I2C_setslave(unsigned short slaveAdr);
 
 #endif /* __HAL_I2C_H_ */
