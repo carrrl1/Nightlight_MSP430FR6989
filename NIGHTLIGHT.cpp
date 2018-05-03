@@ -57,7 +57,7 @@
 void Init_Clock(void);
 void Init_GPIO(void);
 void ADC_init(void);
-void ADC_init_reg(void);
+void Init_ADC_reg(void);
 void Init_Light_Sensor(void);
 void Init_State(void);
 
@@ -67,7 +67,7 @@ void toggleLED(void);
 
 // Defines
 /* Define the wattage, it will define wich LED to turn on or off. The wattage could be 5 (RED), 10 (GREEN) or 15 (BLUE). */
-#define wattage 15
+#define WATTAGE 15
 #define AUDIO_ARRAY_SIZE 30
 #define AUDIO_THRESHOLD 0x9C4
 #define LUX_THRESHOLD 0
@@ -166,7 +166,7 @@ int main(void) {
     //Configure microphone ADC
     //ADC_init();
 
-    ADC_init_reg();
+    Init_ADC_reg();
 
     // Configure clocks
     Init_Clock();
@@ -191,17 +191,6 @@ int main(void) {
  */
 void Init_Clock(void)
 {
-    /*
-    CS_setExternalClockSource(32768, 0);
-    // Intializes the XT1 crystal oscillator
-    CS_turnOnLFXT(CS_LFXT_DRIVE_3);
-
-    // Initializes Clock System DCO = 8MHz
-    CS_setDCOFreq(CS_DCORSEL_0, CS_DCOFSEL_6);
-    CS_initClockSignal(CS_MCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
-    CS_initClockSignal(CS_SMCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
-    CS_initClockSignal(CS_ACLK, CS_LFXTCLK_SELECT, CS_CLOCK_DIVIDER_1);*/
-
     // Set DCO frequency to default 8MHz
     CS_setDCOFreq(CS_DCORSEL_0, CS_DCOFSEL_6);
 
@@ -221,7 +210,7 @@ void Init_GPIO(void) {
     GPIO_setAsOutputPin(GPIO_PORT_P9,GPIO_PIN7);
     GPIO_setOutputLowOnPin(GPIO_PORT_P9,GPIO_PIN7);
 
-    switch (wattage) {
+    switch (WATTAGE) {
         case 5:
             GPIO_setAsOutputPin(GPIO_PORT_P2, GPIO_PIN6);
             GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN6);
@@ -253,7 +242,7 @@ void Init_GPIO(void) {
 /* Method to initialize the the light sensor and I2C  */
 void Init_Light_Sensor(void) {
     /* Initialize I2C communication */
-    I2C_initGPIO;
+    I2C_initGPIO();
     I2C_init();
 
     /* Initialize OPT3001 digital ambient light sensor */
@@ -350,7 +339,7 @@ void ADC_init(void) {
         );
 }
 
-void ADC_init_reg(void) {
+void Init_ADC_reg(void) {
     // Set P4.1 and P4.2 as Secondary Module Function Input, LFXT.
     GPIO_setAsPeripheralModuleFunctionInputPin(
            GPIO_PORT_PJ,
@@ -406,7 +395,7 @@ void runningIndicator(void) {
 
 /* Method to toggle the LED  */
 void toggleLED(void) {
-    switch (wattage) {
+    switch (WATTAGE) {
         case 5:
             GPIO_toggleOutputOnPin(GPIO_PORT_P2, GPIO_PIN6);
             break;
@@ -463,7 +452,8 @@ __interrupt void TIMER0_A0_ISR (void)
     {
         g_bButtonPressed=true;
         if(g_bState){
-                if(g_iTimeCounter==2000){
+                //If 30s have passed then turn it off.
+                if(g_iTimeCounter==1000){
                     g_iTimeCounter=0;
                     //After 30s lights down!
                     toggleLED();
