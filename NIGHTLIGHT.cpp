@@ -67,8 +67,8 @@ void toggleLED(void);
 
 // Defines
 /* Define the wattage, it will define wich LED to turn on or off. The wattage could be 5 (RED), 10 (GREEN) or 15 (BLUE). */
-#define WATTAGE 15
-#define AUDIO_ARRAY_SIZE 30
+#define WATTAGE 5
+#define AUDIO_ARRAY_SIZE 500
 #define AUDIO_THRESHOLD 0x9C4
 #define LUX_THRESHOLD 0
 
@@ -77,7 +77,7 @@ extern volatile bool g_bState=false;
 extern volatile int g_iTimeCounter=0;
 extern volatile float g_fLux=100;
 extern volatile bool g_bButtonPressed=false;
-extern volatile signed short g_aAudioRecord[AUDIO_ARRAY_SIZE]={};
+extern volatile signed short g_aAudioRecord[AUDIO_ARRAY_SIZE]={0x9C4};
 extern volatile int g_iAudioRecordPosition=0;
 
 //Timer A configuration.
@@ -491,6 +491,10 @@ __interrupt void ADC12_ISR(void)
             l_iAudioAverage+=g_aAudioRecord[i];
             l_iAudioAverage=l_iAudioAverage/2;
         }
+
+        //Get 10% more
+        l_iAudioAverage=l_iAudioAverage*1.1;
+
         //l_iAudioAverage=l_iAudioAverage/AUDIO_ARRAY_SIZE;
 
         //Store the result
@@ -503,7 +507,7 @@ __interrupt void ADC12_ISR(void)
         //Compare the result with the average (turn on condition)
         //if (l_iAudio>l_iAudioAverage) {
         //if ((l_iAudio>l_iAudioAverage && l_iAudio >= AUDIO_THRESHOLD)) {
-        if ((l_iAudio>l_iAudioAverage && l_iAudio >= AUDIO_THRESHOLD) || (g_fLux<LUX_THRESHOLD)) {
+        if ((l_iAudio>=l_iAudioAverage && l_iAudio >= AUDIO_THRESHOLD) || (g_fLux<LUX_THRESHOLD)) {
         //if (l_iAudio >= AUDIO_THRESHOLD) {
             GPIO_toggleOutputOnPin(GPIO_PORT_P9,GPIO_PIN7);
             if(g_bState){
